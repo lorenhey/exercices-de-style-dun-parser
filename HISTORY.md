@@ -13,3 +13,4 @@ Esta cronología documenta hitos del proyecto anteriores a su publicación en Gi
 - 2017-11-18 — Versión 4.
 - 2018-01-05 — Versión 5.
 - 2018-01-21 — Versión 6.
+- 2018-02-11 — Versión 7.
