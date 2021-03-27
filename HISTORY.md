@@ -8,3 +8,4 @@ Esta cronología documenta hitos del proyecto anteriores a su publicación en Gi
 
 - 2017-09-24 — Inicio del proyecto.
 - 2017-09-24 — Versión 1.
+- 2017-10-07 — Versión 2.
