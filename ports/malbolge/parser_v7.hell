@@ -1,0 +1,55 @@
+# Parser v7 – recognizer incremental (HeLL → Malbolge)
+# Tokens:
+#   'q' = relativizador
+#   'v' = verbo
+#   '.' = fin
+#
+# Estados internos:
+#   0 = base
+#   1 = relativa
+#   2 = verbo visto (estado bueno)
+#   3 = verbo visto dentro de relativa
+
+var state = 0
+var accept = 0
+var done = 0
+var c
+
+loop:
+  in c
+  if c == 0 goto end        # EOF
+
+  accept = 0
+  done = 0
+
+  if c == '.' goto dot
+  if c == 'q' goto que
+  if c == 'v' goto verb
+  goto emit
+
+que:
+  if state == 0 state = 1
+  if state == 2 state = 3
+  goto emit
+
+verb:
+  if state == 1 state = 0
+  else state = 2
+  goto emit
+
+dot:
+  done = 1
+  if state == 2 accept = 1
+  goto emit
+
+emit:
+  out (state + '1')
+  out ' '
+  out (accept + '0')
+  out ' '
+  out (done + '0')
+  out 10
+  goto loop
+
+end:
+  halt

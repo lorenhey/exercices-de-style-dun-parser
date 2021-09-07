@@ -1,0 +1,336 @@
+begin
+  comment
+    ParserV7 incremental (CKY) en ALGOL 60:
+      - tokens ya convertidos a categorías (enteros) y scores (reales)
+      - gramática en tablas: LHS[r], RHS1[r], RHS2[r], LEN[r], LOGW[r]
+      - beam por celda + unary closure
+      - backpointers: KIND=0 leaf(A=pos token), 1 unary(A=ptr child), 2 binary(A=ptr L, B=ptr R)
+
+    NOTA "50s":
+      - No hay JSON, no hay strings estándar en ALGOL 60.
+      - “Deck” externo: pegás las tablas ya generadas.
+  ;
+
+  integer MAXN, MAXJ, BEAM, NRULES, STARTSYM;
+  real NEG;
+
+  MAXN := 64;
+  MAXJ := 66;     comment MAXN + 2 ;
+  BEAM := 8;
+  NEG := -1.0e30;
+
+  comment ==== gramática (a completar con tu deck) ==== ;
+  comment NRULES y STARTSYM deben setearse según resources ;
+  NRULES := 0;
+  STARTSYM := 1;
+
+  integer array LHS[1:1], RHS1[1:1], RHS2[1:1], LEN[1:1];
+  real    array LOGW[1:1];
+
+  comment
+    IMPORTANTE:
+    Reemplazá las declaraciones de arriba por:
+      integer array LHS[1:NRULES], RHS1[1:NRULES], RHS2[1:NRULES], LEN[1:NRULES];
+      real    array LOGW[1:NRULES];
+    y asigná valores en un procedimiento LOAD_GRAMMAR (ver abajo).
+  ;
+
+  comment ==== tokens actuales (incremental) ==== ;
+  integer N;
+  integer array TokCat[1:MAXN];
+  real    array TokSc [1:MAXN];
+
+  comment ==== chart: celda(i,j) con BEAM items ==== ;
+  integer array Cat [1:MAXN, 1:MAXJ, 1:BEAM];
+  real    array Sc  [1:MAXN, 1:MAXJ, 1:BEAM];
+  integer array Kind[1:MAXN, 1:MAXJ, 1:BEAM];
+  integer array APtr[1:MAXN, 1:MAXJ, 1:BEAM];
+  integer array BPtr[1:MAXN, 1:MAXJ, 1:BEAM];
+
+  comment ==== util: pack/unpack de punteros a items ==== ;
+  integer procedure PACK(i, j, s);
+    integer i, j, s;
+    PACK := ((i * 1000) + j) * 10 + s;
+
+  integer procedure P_I(ptr); integer ptr;
+    P_I := ptr div 10000;
+
+  integer procedure P_J(ptr); integer ptr;
+    P_J := (ptr div 10) - (P_I(ptr) * 1000);
+
+  integer procedure P_S(ptr); integer ptr;
+    P_S := ptr - (ptr div 10) * 10;
+
+  comment ==== clear cell(i,j) ==== ;
+  procedure CLEARCELL(i, j);
+    integer i, j;
+    begin
+      integer s;
+      for s := 1 step 1 until BEAM do
+      begin
+        Cat[i,j,s] := 0;
+        Sc[i,j,s] := NEG;
+        Kind[i,j,s] := 0;
+        APtr[i,j,s] := 0;
+        BPtr[i,j,s] := 0;
+      end
+    end;
+
+  comment ==== insert con dedupe por Cat ==== ;
+  integer procedure INSERT(i, j, newCat, newSc, newKind, a, b);
+    integer i, j, newCat, newKind, a, b;
+    real newSc;
+    begin
+      integer s, emptyS, worstS;
+      real worstSc;
+
+      comment 1) si existe cat, reemplazar si mejor ;
+      for s := 1 step 1 until BEAM do
+        if Cat[i,j,s] = newCat then
+        begin
+          if newSc > Sc[i,j,s] then
+          begin
+            Sc[i,j,s] := newSc;
+            Kind[i,j,s] := newKind;
+            APtr[i,j,s] := a;
+            BPtr[i,j,s] := b;
+            INSERT := 1;
+            goto done
+          end;
+          INSERT := 0;
+          goto done
+        end;
+
+      comment 2) buscar empty slot ;
+      emptyS := 0;
+      for s := 1 step 1 until BEAM do
+        if Cat[i,j,s] = 0 then
+        begin emptyS := s; goto foundEmpty end;
+      foundEmpty: ;
+
+      if emptyS <> 0 then
+      begin
+        s := emptyS;
+        Cat[i,j,s] := newCat;
+        Sc[i,j,s] := newSc;
+        Kind[i,j,s] := newKind;
+        APtr[i,j,s] := a;
+        BPtr[i,j,s] := b;
+        INSERT := 1;
+        goto done
+      end;
+
+      comment 3) reemplazar el peor si mejora ;
+      worstS := 1;
+      worstSc := Sc[i,j,1];
+      for s := 2 step 1 until BEAM do
+        if Sc[i,j,s] < worstSc then
+        begin
+          worstSc := Sc[i,j,s];
+          worstS := s
+        end;
+
+      if newSc > worstSc then
+      begin
+        s := worstS;
+        Cat[i,j,s] := newCat;
+        Sc[i,j,s] := newSc;
+        Kind[i,j,s] := newKind;
+        APtr[i,j,s] := a;
+        BPtr[i,j,s] := b;
+        INSERT := 1
+      end
+      else INSERT := 0;
+
+      done:
+    end;
+
+  comment ==== unary closure: aplica reglas len=1 hasta estabilidad (iter limitada) ==== ;
+  procedure UNARYCLOSE(i, j);
+    integer i, j;
+    begin
+      integer iter, changed, s, r, childCat, newCat, childPtr;
+      real childSc, newSc;
+
+      for iter := 1 step 1 until 16 do
+      begin
+        changed := 0;
+
+        for s := 1 step 1 until BEAM do
+        begin
+          childCat := Cat[i,j,s];
+          if childCat <> 0 then
+          begin
+            childSc := Sc[i,j,s];
+            childPtr := PACK(i, j, s);
+
+            for r := 1 step 1 until NRULES do
+              if LEN[r] = 1 then
+                if RHS1[r] = childCat then
+                begin
+                  newCat := LHS[r];
+                  newSc := childSc + LOGW[r];
+                  if INSERT(i, j, newCat, newSc, 1, childPtr, 0) = 1 then changed := 1
+                end
+          end
+        end;
+
+        if changed = 0 then goto ucdone
+      end;
+      ucdone:
+    end;
+
+  comment ==== combina left(i,k) y right(k,j) con reglas binarias ==== ;
+  procedure COMBINE(i, k, j);
+    integer i, k, j;
+    begin
+      integer sl, sr, r, catL, catR, newCat, ptrL, ptrR;
+      real scL, scR, newSc;
+
+      for sl := 1 step 1 until BEAM do
+      begin
+        catL := Cat[i,k,sl];
+        if catL <> 0 then
+        begin
+          scL := Sc[i,k,sl];
+          ptrL := PACK(i, k, sl);
+
+          for sr := 1 step 1 until BEAM do
+          begin
+            catR := Cat[k,j,sr];
+            if catR <> 0 then
+            begin
+              scR := Sc[k,j,sr];
+              ptrR := PACK(k, j, sr);
+
+              for r := 1 step 1 until NRULES do
+                if LEN[r] = 2 then
+                  if RHS1[r] = catL then
+                    if RHS2[r] = catR then
+                    begin
+                      newCat := LHS[r];
+                      newSc := scL + scR + LOGW[r];
+                      call INSERT(i, j, newCat, newSc, 2, ptrL, ptrR)
+                    end
+            end
+          end
+        end
+      end
+    end;
+
+  comment ==== STEP incremental real: agrega token t=N y recomputa spans que terminan en j=N+1 ==== ;
+  procedure STEP(tokCat, tokScore);
+    integer tokCat;
+    real tokScore;
+    begin
+      integer t, i, j, k;
+
+      N := N + 1;
+      t := N;
+      TokCat[t] := tokCat;
+      TokSc[t] := tokScore;
+
+      j := t + 1;
+
+      comment celda (t, t+1): lexical ;
+      CLEARCELL(t, j);
+      call INSERT(t, j, tokCat, tokScore, 0, t, 0);
+      UNARYCLOSE(t, j);
+
+      comment construir todas las spans (i, j) con i=t-1..1 ;
+      for i := t - 1 step -1 until 1 do
+      begin
+        CLEARCELL(i, j);
+
+        for k := i + 1 step 1 until j - 1 do
+          COMBINE(i, k, j);
+
+        UNARYCLOSE(i, j)
+      end
+    end;
+
+  comment ==== mejor root en (1, N+1). Devuelve ptr o 0 ==== ;
+  integer procedure BESTROOTPTR;
+    begin
+      integer j, s, bestS;
+      real bestSc;
+
+      if N = 0 then begin BESTROOTPTR := 0; goto brdone end;
+
+      j := N + 1;
+      bestSc := NEG;
+      bestS := 0;
+
+      for s := 1 step 1 until BEAM do
+        if Cat[1,j,s] = STARTSYM then
+          if Sc[1,j,s] > bestSc then
+          begin
+            bestSc := Sc[1,j,s];
+            bestS := s
+          end;
+
+      if bestS = 0 then BESTROOTPTR := 0
+      else BESTROOTPTR := PACK(1, j, bestS);
+
+      brdone:
+    end;
+
+  comment ==== reset incremental ==== ;
+  procedure RESET;
+    begin
+      integer i, j;
+      N := 0;
+      for i := 1 step 1 until MAXN do
+        for j := 1 step 1 until MAXJ do
+          CLEARCELL(i, j)
+    end;
+
+  comment ==== decoder “numérico” del árbol (no imprime strings) ==== ;
+  procedure DUMP(ptr);
+    integer ptr;
+    begin
+      integer i, j, s, c, knd, a, b;
+      i := P_I(ptr); j := P_J(ptr); s := P_S(ptr);
+
+      c := Cat[i,j,s];
+      knd := Kind[i,j,s];
+      a := APtr[i,j,s];
+      b := BPtr[i,j,s];
+
+      comment
+        SALIDA DEPENDE DE TU IMPLEMENTACIÓN (IO no estándar).
+        Acá “dump” sería:
+          print "(" ; print c ;
+          si leaf: print ":" ; print a ; print ")"
+          si unary: dump(a)
+          si binary: dump(a); dump(b)
+        En vez de imprimir, también podés volcar a un buffer numérico.
+      ;
+    end;
+
+  comment ==== LOADER PLACEHOLDER ==== ;
+  procedure LOAD_GRAMMAR;
+    begin
+      comment
+        Acá pegás tus asignaciones:
+          NRULES := ...;
+          STARTSYM := ...;
+          LHS[1] := ...; RHS1[1] := ...; RHS2[1] := ...; LEN[1] := ...; LOGW[1] := ...;
+          ...
+      ;
+    end;
+
+  comment ==== MAIN (ejemplo) ==== ;
+  begin
+    LOAD_GRAMMAR;
+    RESET;
+
+    comment ejemplo: vos le pasás categorías ya resueltas por lexicon/tokenizador externo ;
+    comment STEP( catId, logProb ) ;
+    comment STEP( 123, 0.0 ); STEP( 45, 0.0 ); ... ;
+
+    comment al final ;
+    comment ptr := BESTROOTPTR; si ptr<>0, DUMP(ptr) ;
+  end;
+
+end

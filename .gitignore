@@ -1,0 +1,26 @@
+# build artifacts
+*.o
+*.obj
+*.exe
+*.class
+*.jar
+*.hi
+*.dyn_hi
+*.dyn_o
+*.out
+*.bin
+
+# language/package outputs
+target/
+dist-newstyle/
+_build/
+build/
+bin/
+obj/
+*.pyc
+__pycache__/
+
+# local/editor
+.DS_Store
+.vscode/
+.idea/

@@ -1,0 +1,345 @@
+# Parser V7 incremental (CKY) en ALGOL 68
+# - Gramática en tablas numéricas precompiladas (deck)
+# - Tokens ya “tageados” a categorías (enteros) + score (REAL)
+# - Beam por celda + unary closure + backpointers
+#
+# Probado mentalmente para estilo Algol68G / a68g.
+#
+
+MODE PTR = INT;
+
+INT maxn := 64;
+INT maxj := maxn + 2;
+INT beam := 8;
+
+REAL neg := -1.0e30;
+
+# -------------------------
+# Estado global
+# -------------------------
+INT n := 0;
+
+# tokens (incremental)
+[1:maxn]INT tokcat;
+[1:maxn]REAL toksc;
+[1:maxn]STRING toksurf;      # opcional (para render legible)
+
+# chart: celda(i,j) con beam slots
+[1:maxn, 1:maxj, 1:beam]INT  cat;
+[1:maxn, 1:maxj, 1:beam]REAL sc;
+[1:maxn, 1:maxj, 1:beam]INT  kind;   # 0 leaf, 1 unary, 2 binary
+[1:maxn, 1:maxj, 1:beam]PTR  aptr;   # leaf: token index; unary/binary: packed ptr
+[1:maxn, 1:maxj, 1:beam]PTR  bptr;
+
+# -------------------------
+# Gramática (deck)
+# -------------------------
+INT nrules := 0;
+INT startSym := 1;
+
+REF []INT  lhs, rhs1, rhs2, rlen;
+REF []REAL logw;
+
+# mapping id -> string (deck)
+REF []STRING id2sym;
+
+PROC sym = (INT id)STRING:
+  IF id2sym = NIL THEN "<?>"
+  ELIF id < LWB id2sym OR id > UPB id2sym THEN "<?>"
+  ELSE id2sym[id]
+  FI;
+
+# -------------------------
+# Pack/Unpack de punteros
+# ptr = ((i*1000)+j)*10 + s
+# -------------------------
+PROC pack = (INT i, j, s)PTR: (((i*1000)+j)*10 + s);
+PROC p_i  = (PTR p)INT: (p DIV 10000);
+PROC p_j  = (PTR p)INT: ((p DIV 10) - (p_i(p)*1000));
+PROC p_s  = (PTR p)INT: (p MOD 10);
+
+# -------------------------
+# Inicialización
+# -------------------------
+PROC reset = VOID:
+(
+  n := 0;
+  FOR i FROM 1 TO maxn DO
+    FOR j FROM 1 TO maxj DO
+      FOR s FROM 1 TO beam DO
+        cat[i,j,s] := 0;
+        sc[i,j,s] := neg;
+        kind[i,j,s] := 0;
+        aptr[i,j,s] := 0;
+        bptr[i,j,s] := 0
+      OD
+    OD
+  OD
+);
+
+PROC clearcell = (INT i, j)VOID:
+  FOR s FROM 1 TO beam DO
+    cat[i,j,s] := 0;
+    sc[i,j,s] := neg;
+    kind[i,j,s] := 0;
+    aptr[i,j,s] := 0;
+    bptr[i,j,s] := 0
+  OD;
+
+# -------------------------
+# Insert con dedupe por categoría
+# Devuelve TRUE si cambió algo (insertó o reemplazó)
+# -------------------------
+PROC insert = (INT i, j, newCat, INT newKind, PTR a, PTR b, REAL newSc)BOOL:
+BEGIN
+  INT s, emptyS, worstS;
+  REAL worstSc;
+
+  # 1) si existe cat, reemplazar si mejor
+  FOR s FROM 1 TO beam DO
+    IF cat[i,j,s] = newCat THEN
+      IF newSc > sc[i,j,s] THEN
+        sc[i,j,s] := newSc;
+        kind[i,j,s] := newKind;
+        aptr[i,j,s] := a;
+        bptr[i,j,s] := b;
+        TRUE
+      ELSE
+        FALSE
+      FI
+    FI
+  OD;
+
+  # 2) buscar vacío
+  emptyS := 0;
+  FOR s FROM 1 TO beam DO
+    IF cat[i,j,s] = 0 THEN emptyS := s; GO TO foundEmpty FI
+  OD;
+foundEmpty:
+
+  IF emptyS /= 0 THEN
+    s := emptyS;
+    cat[i,j,s] := newCat;
+    sc[i,j,s] := newSc;
+    kind[i,j,s] := newKind;
+    aptr[i,j,s] := a;
+    bptr[i,j,s] := b;
+    TRUE
+  ELSE
+    # 3) reemplazar peor si mejora
+    worstS := 1;
+    worstSc := sc[i,j,1];
+    FOR s FROM 2 TO beam DO
+      IF sc[i,j,s] < worstSc THEN worstSc := sc[i,j,s]; worstS := s FI
+    OD;
+
+    IF newSc > worstSc THEN
+      s := worstS;
+      cat[i,j,s] := newCat;
+      sc[i,j,s] := newSc;
+      kind[i,j,s] := newKind;
+      aptr[i,j,s] := a;
+      bptr[i,j,s] := b;
+      TRUE
+    ELSE
+      FALSE
+    FI
+  FI
+END;
+
+# -------------------------
+# Unary closure: aplica reglas len=1 hasta estabilidad (iter limitada)
+# -------------------------
+PROC unaryclose = (INT i, j)VOID:
+BEGIN
+  INT iter, s, r;
+  BOOL changed;
+  INT childCat, newCat;
+  REAL childSc, newSc;
+  PTR childPtr;
+
+  FOR iter FROM 1 TO 16 DO
+    changed := FALSE;
+
+    FOR s FROM 1 TO beam DO
+      childCat := cat[i,j,s];
+      IF childCat /= 0 THEN
+        childSc := sc[i,j,s];
+        childPtr := pack(i, j, s);
+
+        FOR r FROM 1 TO nrules DO
+          IF rlen[r] = 1 AND rhs1[r] = childCat THEN
+            newCat := lhs[r];
+            newSc := childSc + logw[r];
+            IF insert(i, j, newCat, 1, childPtr, 0, newSc) THEN changed := TRUE FI
+          FI
+        OD
+      FI
+    OD;
+
+    IF NOT changed THEN GO TO ucDone FI
+  OD;
+ucDone:
+END;
+
+# -------------------------
+# Combine: prueba reglas binarias sobre items de (i,k) y (k,j)
+# -------------------------
+PROC combine = (INT i, k, j)VOID:
+BEGIN
+  INT sl, sr, r;
+  INT catL, catR, newCat;
+  REAL scL, scR, newSc;
+  PTR ptrL, ptrR;
+
+  FOR sl FROM 1 TO beam DO
+    catL := cat[i,k,sl];
+    IF catL /= 0 THEN
+      scL := sc[i,k,sl];
+      ptrL := pack(i, k, sl);
+
+      FOR sr FROM 1 TO beam DO
+        catR := cat[k,j,sr];
+        IF catR /= 0 THEN
+          scR := sc[k,j,sr];
+          ptrR := pack(k, j, sr);
+
+          FOR r FROM 1 TO nrules DO
+            IF rlen[r] = 2 AND rhs1[r] = catL AND rhs2[r] = catR THEN
+              newCat := lhs[r];
+              newSc := scL + scR + logw[r];
+              VOID(insert(i, j, newCat, 2, ptrL, ptrR, newSc))
+            FI
+          OD
+        FI
+      OD
+    FI
+  OD
+END;
+
+# -------------------------
+# STEP incremental real:
+# agrega token t=N y recomputa spans que terminan en j=N+1
+# -------------------------
+PROC step = (INT newTokCat, REAL newTokScore, STRING surface)VOID:
+BEGIN
+  INT t, i, j, k;
+
+  n +:= 1;
+  t := n;
+
+  tokcat[t] := newTokCat;
+  toksc[t] := newTokScore;
+  toksurf[t] := surface;
+
+  j := t + 1;
+
+  # lexical cell (t, t+1)
+  clearcell(t, j);
+  VOID(insert(t, j, newTokCat, 0, t, 0, newTokScore));
+  unaryclose(t, j);
+
+  # spans (i, j) con i = t-1 .. 1
+  FOR i FROM t-1 BY -1 TO 1 DO
+    clearcell(i, j);
+    FOR k FROM i+1 TO j-1 DO
+      combine(i, k, j)
+    OD;
+    unaryclose(i, j)
+  OD
+END;
+
+# -------------------------
+# Mejor ROOT en (1, n+1)
+# devuelve ptr o 0
+# -------------------------
+PROC bestrootptr = PTR:
+BEGIN
+  INT j, s, bestS;
+  REAL bestSc;
+
+  IF n = 0 THEN 0 FI;
+
+  j := n + 1;
+  bestSc := neg;
+  bestS := 0;
+
+  FOR s FROM 1 TO beam DO
+    IF cat[1,j,s] = startSym AND sc[1,j,s] > bestSc THEN
+      bestSc := sc[1,j,s];
+      bestS := s
+    FI
+  OD;
+
+  IF bestS = 0 THEN 0 ELSE pack(1, j, bestS) FI
+END;
+
+# -------------------------
+# Render bracketed (recursivo)
+# - leaf: (POS token)
+# - unary: (X child)
+# - binary: (X left right)
+# -------------------------
+PROC render = (PTR p)STRING:
+BEGIN
+  INT i, j, s, c, knd;
+  PTR a, b;
+  STRING lab;
+
+  IF p = 0 THEN "" FI;
+
+  i := p_i(p); j := p_j(p); s := p_s(p);
+  c := cat[i,j,s];
+  knd := kind[i,j,s];
+  a := aptr[i,j,s];
+  b := bptr[i,j,s];
+  lab := sym(c);
+
+  IF knd = 0 THEN
+    "(" + lab + " " + toksurf[a] + ")"
+  ELIF knd = 1 THEN
+    "(" + lab + " " + render(a) + ")"
+  ELSE
+    "(" + lab + " " + render(a) + " " + render(b) + ")"
+  FI
+END;
+
+# -------------------------
+# Loader “deck” (placeholder)
+# Acá pegás las asignaciones generadas desde grammar.json/lexicon.json
+# -------------------------
+PROC load_grammar = VOID:
+BEGIN
+  # Ejemplo mínimo (NO real): START -> START (unario) para que compile.
+  # Reemplazalo por tu deck.
+  nrules := 1;
+  startSym := 1;
+
+  lhs  := HEAP [1:nrules]INT;
+  rhs1 := HEAP [1:nrules]INT;
+  rhs2 := HEAP [1:nrules]INT;
+  rlen := HEAP [1:nrules]INT;
+  logw := HEAP [1:nrules]REAL;
+
+  lhs[1] := 1; rhs1[1] := 1; rhs2[1] := 0; rlen[1] := 1; logw[1] := 0.0;
+
+  # id2sym (solo para demo)
+  id2sym := HEAP [1:1]STRING;
+  id2sym[1] := "S"
+END;
+
+# -------------------------
+# MAIN demo (mínimo)
+# -------------------------
+load_grammar;
+reset;
+
+# En uso real, vos llamás step(catId, logProb, "surface") token a token.
+# Ejemplo trivial:
+step(1, 0.0, "X");
+PTR root := bestrootptr;
+IF root = 0 THEN
+  print(("NO-PARSE", newline))
+ELSE
+  print((render(root), newline))
+FI
