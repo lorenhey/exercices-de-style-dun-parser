@@ -45,7 +45,3 @@ qv.v.
 ```
 
 donde `q = QUE`, `v = VERB`, `.` = fin de oración. La salida mínima esperada es una traza por token: `state accept done`.
-
-## Notas de extracción
-
-El material fue extraído del share público de ChatGPT indicado en la conversación. Algunos artefactos estaban en enlaces `sandbox:/mnt/data/...` dentro del share y no estaban embebidos como código fuente; cuando ocurrió, el repo conserva el port fuente disponible o una nota en su carpeta.
