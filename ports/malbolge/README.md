@@ -1,6 +1,6 @@
 # Malbolge / HeLL
 
-`parser_v7.hell` is the HeLL source from the chat. The generated `parser_v7.mal` artifact was described as generated output and was not embedded in the public share.
+`parser_v7.hell` is the HeLL source available for this port. The compiled `parser_v7.mal` artifact is referenced separately and is not included here.
 
 Generate and run with a compatible HeLL-to-Malbolge toolchain:
 

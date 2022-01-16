@@ -63,7 +63,7 @@ cargo run --manifest-path ports/rust/Cargo.toml -- --lex resources/lexicon.json 
 
 ### JavaScript / PHP / Perl / R / Wolfram / MATLAB
 
-Cada carpeta incluye archivo principal y runner cuando el chat lo incluia. Ejecutar desde la carpeta del port o pasar rutas absolutas/relativas hacia `resources/`.
+Cada carpeta incluye archivo principal y runner cuando aplica. Ejecutar desde la carpeta del port o pasar rutas absolutas/relativas hacia `resources/`.
 
 ### Esolangs
 

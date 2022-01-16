@@ -1,8 +1,8 @@
 # Shakespeare Programming Language
 
-The shared ChatGPT page references `parser_v7_spl.spl` as a `sandbox:/mnt/data/...` download, but the SPL source itself is not embedded in the public share HTML. The repo keeps this note so the missing artifact is explicit.
+The source bundle references `parser_v7_spl.spl` as a `sandbox:/mnt/data/...` download, but the SPL source itself is not included here. The repo keeps this note so the missing artifact is explicit.
 
-The chat described the interface:
+The described interface:
 
 - input: numeric tokens via `Listen to your heart.`
 - `6` = VERB
