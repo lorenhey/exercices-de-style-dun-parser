@@ -2,37 +2,23 @@
 
 > «Un mismo parser, reescrito una y otra vez bajo las restricciones de lenguajes de programación distintos.»
 
+---
+
 ## De qué se trata
 
-Este repositorio nace de una idea deliberadamente poco práctica: tomar un mismo parser sintáctico incremental y reescribirlo en la mayor variedad posible de lenguajes de programación.
+Este repositorio nace de una idea deliberadamente poco práctica: tomar un mismo parser sintáctico incremental y reescribirlo en la mayor variedad posible de lenguajes de programación que se me ocurran.
 
-Python, Java, C, C++, C#, Rust, Erlang, Haskell, Prolog, Lisp, BASIC, Pascal, Fortran, COBOL, ALGOL, APL, Assembly, Brainfuck, Befunge, INTERCAL, Shakespeare Programming Language, Malbolge y otros.
-
-No porque haga falta.
-
-No porque alguno de esos ports vaya a resolver mejor un problema real.
-
-No porque exista una necesidad técnica de disponer de un parser de lenguaje natural escrito en Brainfuck.
-
-Precisamente al contrario.
+Python, Java, C, C++, C#, Rust, Erlang, Haskell, Prolog, Lisp, BASIC, Pascal, Fortran, COBOL, ALGOL, APL, Assembly, Brainfuck, Befunge, INTERCAL, Shakespeare Programming Language y Malbolge terminaron en la bolsa (y en la mala, saludos a Ulises y a Diomedes que andan por ahí).
 
 Este proyecto no tiene un propósito utilitario.
 
-Es un ejercicio de estilo.
-
-El parser es solamente el motivo que permanece mientras cambia la escritura.
-
----
-
-## Raymond Queneau
+Es un ejercicio de estilo, el parser es solamente el motivo que permanece mientras cambia la escritura.
 
 El título remite, naturalmente, a *Exercices de style* de Raymond Queneau.
 
 Publicado en 1947, el libro toma un episodio insignificante y lo vuelve a contar noventa y nueve veces. Cambian el registro, la estructura, la voz, el procedimiento, el género, la retórica. La anécdota permanece.
 
-Eso es lo que me interesa.
-
-No reproducir literalmente el procedimiento de Queneau, sino trasladar su principio a otro tipo de escritura.
+Eso es lo que me interesa: no reproducir literalmente el procedimiento de Queneau, sino trasladar su principio a otro tipo de escritura.
 
 En este repositorio:
 
@@ -41,61 +27,21 @@ INVARIANTE      -> un parser sintáctico incremental
 VARIACIÓN       -> el lenguaje en el que está escrito
 ```
 
-La situación narrativa de Queneau es reemplazada por un algoritmo.
-
-Los estilos son reemplazados por lenguajes de programación.
-
-La pregunta permanece casi intacta:
-
-¿cuántas formas distintas puede adoptar una misma cosa sin dejar de ser reconocible?
-
----
-
-## Oulipo
-
-*Exercices de style* es anterior a la fundación del Oulipo. Queneau publicaría el libro en 1947; el Ouvroir de littérature potentielle aparecería en 1960.
-
-No considero por eso este proyecto una aplicación literal de un procedimiento oulipiano.
-
-La relación es más amplia.
+La situación narrativa de Queneau es reemplazada por un algoritmo. Los estilos son reemplazados por lenguajes de programación. Pero la pregunta permanece casi intacta: ¿cuántas formas distintas puede adoptar una misma cosa sin dejar de ser reconocible?
 
 Me interesa especialmente la idea de *contrainte*: la restricción como principio generador de forma.
 
-En literatura, una restricción puede ser un lipograma, una estructura matemática, una combinatoria, una regla sintáctica o cualquier otro dispositivo capaz de reducir deliberadamente el espacio de lo posible.
+En literatura, una restricción puede ser un lipograma, una estructura matemática, una combinatoria, una regla sintáctica o cualquier otro dispositivo capaz de reducir deliberadamente el espacio de lo posible. No hace falta explicarlo mucho, leé *Exercices de style* y va a quedar claro.
 
-Acá no necesito inventar las restricciones.
-
-Los lenguajes ya vienen con ellas.
-
-Python permite ciertas abstracciones.
-
-C obliga a otras.
-
-Prolog propone otra manera de pensar la relación entre datos y reglas.
-
-Haskell empuja hacia la composición funcional.
-
-APL comprime operaciones enteras en unas pocas expresiones.
-
-Assembly obliga a abandonar casi toda comodidad.
-
-Brainfuck reduce el universo a una cinta, un puntero y ocho instrucciones.
-
-Befunge convierte el programa en un espacio bidimensional.
-
-Malbolge lleva la hostilidad del lenguaje hasta el absurdo.
+Lo bueno para un vago sin talento es que acá no necesito inventar las restricciones, los lenguajes ya vienen con ellas.
 
 Cada port es, en ese sentido, una nueva *contrainte*.
-
-El interés no está en vencerla.
-
-Está en observar qué forma produce.
 
 ---
 
 ## Programar como escribir
 
-En programación se habla constantemente de estilo, pero casi siempre en un sentido menor:
+En programación se habla constantemente de "estilo", pero casi siempre en un sentido menor:
 
 - nombres de variables;
 - sangría;
@@ -103,19 +49,7 @@ En programación se habla constantemente de estilo, pero casi siempre en un sent
 - convenciones;
 - organización de archivos.
 
-Acá uso la palabra en un sentido más fuerte.
-
-Un lenguaje de programación no cambia solamente la sintaxis superficial de un algoritmo.
-
-Cambia lo que resulta natural decir.
-
-Cambia lo que resulta incómodo.
-
-Cambia lo que puede darse por supuesto.
-
-Cambia qué estructuras aparecen primero en la cabeza.
-
-Cambia qué partes del problema quedan expuestas.
+Acá eso me importa poco; el uso de la palabra es en un sentido más fuerte. Un lenguaje de programación no cambia solamente la sintaxis superficial de un algoritmo, cambia lo que resulta natural decir, cambia lo que resulta incómodo, cambia lo que puede darse por supuesto, cambia qué estructuras aparecen primero en la cabeza, cambia qué partes del problema quedan expuestas.
 
 El mismo parser escrito en Prolog no es simplemente el parser de Python con otra puntuación.
 
@@ -125,27 +59,15 @@ Hay algo del lenguaje de destino que termina interviniendo necesariamente en la 
 
 Eso es, justamente, lo que quiero conservar.
 
-No me interesa producir traducciones mecánicas que escondan las particularidades de cada lenguaje.
-
-Me interesa que cada implementación tenga algo de su idioma.
-
 ---
 
 ## ¿Por qué un parser?
 
-Podría haber elegido casi cualquier algoritmo.
+Podría haber elegido casi cualquier algoritmo, pero elegí un parser porque el objeto tiene una cualidad que me resulta especialmente apropiada para el experimento: trabaja sobre lenguaje mediante lenguaje.
 
-Elegí un parser porque el objeto tiene una cualidad que me resulta especialmente apropiada para el experimento: trabaja sobre lenguaje mediante lenguaje.
+Un lenguaje de programación intenta analizar una lengua natural. La forma que analiza y la forma desde la cual se analiza pertenecen a órdenes distintos, pero ambas son sistemas formales.
 
-Un lenguaje de programación intenta analizar una lengua natural.
-
-La forma que analiza y la forma desde la cual se analiza pertenecen a órdenes distintos, pero ambas son sistemas formales.
-
-Eso produce un juego de espejos bastante fértil.
-
-El objeto de partida es un parser sintáctico incremental generalista.
-
-Recibe una oración progresivamente y actualiza su análisis a medida que llegan nuevas palabras.
+Eso produce un juego de espejos bastante fértil. El objeto de partida es un parser sintáctico incremental generalista. Recibe una oración progresivamente y actualiza su análisis a medida que llegan nuevas palabras.
 
 Por ejemplo:
 
@@ -187,9 +109,9 @@ El análisis completo es el resultado de esa sucesión.
 
 ## El Parser V7
 
-La implementación de referencia del proyecto es el Parser V7.
+La implementación de referencia del proyecto es el Parser V7, es el primero publicado tras 6 versiones menores que fui haciendo cada muerte de obispo, medio adrede, medio de vago.
 
-En sus versiones más completas utiliza una arquitectura de parsing incremental basada en chart, con elementos como:
+En las versiones más completas utiliza una arquitectura de parsing incremental basada en chart, con elementos como:
 
 - reglas léxicas;
 - reglas unarias y binarias;
@@ -212,11 +134,7 @@ token₃ -> estado₃
 tokenₙ -> análisis
 ```
 
-Pero este repositorio no pretende convertir esa arquitectura en un estándar.
-
-El Parser V7 es el tema.
-
-Los ports son las variaciones.
+Pero este repositorio no pretende convertir esa arquitectura en un estándar. El Parser V7 *es* el tema. Los ports son las variaciones.
 
 ---
 
@@ -224,15 +142,13 @@ Los ports son las variaciones.
 
 Una parte importante del proyecto apareció cuando la traducción empezó a llegar a lenguajes cada vez más restrictivos.
 
-Mientras se trabaja con Python, Java, C o Rust, todavía resulta razonable intentar conservar casi toda la estructura original.
+Con Python, Java, C o Rust, todavía resulta razonable intentar conservar casi toda la estructura original.
 
 Con Brainfuck la afirmación empieza a volverse ridícula.
 
-Con Malbolge, directamente cómica.
+Con Malbolge, es como con Elvira: es otra cosa.
 
-Ahí aparece una pregunta que me interesa más que una fidelidad artificial:
-
-¿qué es lo mínimo que debe sobrevivir para que todavía pueda reconocer el ejercicio original?
+Y ahí aparece una pregunta que me interesa más que una fidelidad artificial: ¿qué es lo mínimo que debe sobrevivir para que todavía pueda reconocer el ejercicio original?
 
 Por eso las implementaciones no se presentan todas como equivalentes.
 
@@ -260,9 +176,7 @@ Conserva el problema y el comportamiento general, pero deja que el paradigma del
 
 Esto es especialmente importante en lenguajes funcionales, lógicos, matriciales o declarativos.
 
-No quiero escribir Python utilizando sintaxis de Prolog.
-
-Quiero ver qué hace Prolog con el problema.
+No quiero escribir Python utilizando sintaxis de Prolog, no es interesante. Quiero ver qué hace Prolog con el problema.
 
 ### III. Reducción
 
@@ -288,13 +202,7 @@ Y el programa produce una traza:
 state accept done
 ```
 
-Eso ya no es el Parser V7 completo.
-
-Es una reducción deliberada.
-
-No intento ocultarlo.
-
-La deformación es parte del ejercicio.
+Eso ya no es el Parser V7 completo. Es una reducción deliberada y no pretendo ocultarlo, obviamente: la deformación es parte del ejercicio.
 
 ### IV. Artefacto generado
 
@@ -312,7 +220,7 @@ compilación
 target
 ```
 
-Código máquina pertenece naturalmente a esta categoría.
+El código máquina pertenece naturalmente a esta categoría.
 
 Malbolge también puede requerirla.
 
@@ -320,73 +228,11 @@ En esos casos, el proceso de transformación forma parte de la pieza.
 
 ---
 
-## No es una colección de benchmarks
+## Lingüística computacional no utilitarista
 
-Este repositorio no intenta decidir qué lenguaje es mejor.
+El proyecto está claramente situado en la lingüística computacional: El objeto es un parser, hay gramática, hay lexicón, hay tokenización, hay reglas sintácticas, hay árboles, hay ambigüedad, hay incrementalidad, hay representación formal.
 
-No mide productividad.
-
-No compara velocidad.
-
-No busca optimizar memoria.
-
-No pretende demostrar que un paradigma sea superior a otro.
-
-Tampoco pretende ofrecer una biblioteca NLP lista para usar.
-
-No hay aquí una carrera entre Python y Rust.
-
-Mucho menos entre Rust y Brainfuck.
-
-La comparación es formal y estética.
-
-Lo que me interesa es observar la distancia entre las soluciones.
-
-A veces esa distancia es pequeña.
-
-A veces dos versiones parecen pertenecer a especies distintas.
-
-Ahí empieza a ponerse interesante.
-
----
-
-## Lingüística computacional, pero sin coartada utilitaria
-
-El proyecto está claramente situado en la lingüística computacional.
-
-El objeto es un parser.
-
-Hay gramática.
-
-Hay lexicón.
-
-Hay tokenización.
-
-Hay reglas sintácticas.
-
-Hay árboles.
-
-Hay ambigüedad.
-
-Hay incrementalidad.
-
-Hay representación formal.
-
-Todo eso es real.
-
-Pero no utilizo la lingüística computacional como justificación instrumental.
-
-No estoy construyendo una aplicación.
-
-No estoy intentando resolver un problema comercial.
-
-No estoy preparando un parser para producción.
-
-El conocimiento técnico es el material del ejercicio, no su excusa.
-
-Así como Queneau necesitaba conocer profundamente las posibilidades de la lengua para deformarlas con precisión, acá necesito que el parser sea suficientemente real como para que sus variaciones también lo sean.
-
-Si el objeto inicial fuera una caricatura, las transformaciones perderían interés.
+Todo eso es real, sí, pero no utilizo la lingüística computacional como justificación instrumental, el conocimiento técnico es el material del ejercicio, no su excusa. Si me pongo en místico delirante, diría que es un manifiesto antitecnócrata, pero con una definición definición de tecnocracia media tangencial: la dictadura del utilitarismo.
 
 ---
 
@@ -404,7 +250,7 @@ resources/
 
 La intención es que diferentes lenguajes puedan partir del mismo material.
 
-Cuando un lenguaje no puede consumir esos archivos directamente, genero una representación apropiada:
+Cuando un lenguaje no puede consumir esos archivos directamente, por eso genero una representación apropiada:
 
 ```text
 grammar.json + lexicon.json
@@ -424,7 +270,7 @@ JSON -> VHDL
 JSON -> NASM
 ```
 
-Eso permite mantener relativamente estable aquello que quiero variar menos:
+Eso permite mantener relativamente estable lo que quiero variar menos:
 
 ```text
 gramática
@@ -432,7 +278,7 @@ lexicón
 corpus
 ```
 
-mientras dejo variar aquello que constituye el centro del proyecto:
+mientras dejo variar lo que constituye el centro del proyecto:
 
 ```text
 la escritura del programa
@@ -442,7 +288,7 @@ la escritura del programa
 
 ## Corpus
 
-Uso un corpus pequeño de oraciones en español para recorrer fenómenos sintácticos diferentes.
+Usé un corpus pequeño de oraciones en español para recorrer fenómenos sintácticos diferentes.
 
 Entre ellas:
 
@@ -461,11 +307,9 @@ La crítica que formularon los empiristas le pareció insuficiente a Kant.
 El concepto que introduce Foucault desestabiliza las categorías tradicionales.
 ```
 
-No pretendo que estas doce oraciones constituyan un corpus representativo del español.
+No pretendo que estas doce oraciones constituyan un corpus representativo del español. Son escenas de prueba.
 
-Son escenas de prueba.
-
-Como la anécdota de Queneau, sirven para volver una y otra vez sobre algo suficientemente estable.
+Como la anécdota de Queneau, sirven para volver una y otra vez sobre algo suficientemente estable, no tienen nada esotérico detrás.
 
 ---
 
@@ -482,9 +326,7 @@ tests/
 └── run_tests.py
 ```
 
-Su función no es certificar una supuesta identidad perfecta entre todos los ports.
-
-Sirve para registrar hasta qué punto distintas versiones conservan comportamientos comunes.
+Su función no es certificar una supuesta identidad perfecta entre todos los ports. Sirve para registrar hasta qué punto distintas versiones conservan comportamientos comunes.
 
 Hay varios niveles posibles:
 
@@ -565,9 +407,7 @@ La colección incluye, entre otros:
 - Befunge
 - Malbolge
 
-No hay un número final previsto.
-
-Tampoco encuentro una razón convincente para que lo haya.
+No hay un número final previsto y tampoco encuentro una razón convincente para que lo haya.
 
 ---
 
@@ -607,9 +447,7 @@ exercices-de-style-dun-parser/
 
 ## Cómo leer el repositorio
 
-No hay un recorrido obligatorio.
-
-Una posibilidad es empezar por Python y avanzar hacia lenguajes cada vez menos hospitalarios:
+No hay un recorrido obligatorio. Una posibilidad es empezar por Python y avanzar hacia lenguajes cada vez menos hospitalarios:
 
 ```text
 Python
@@ -633,11 +471,7 @@ Befunge
 Malbolge
 ```
 
-Otra es comparar dos extremos directamente.
-
-Abrir Python.
-
-Después Brainfuck.
+Otra es comparar dos extremos directamente: Abrir Python. Después Brainfuck.
 
 Y tratar de encontrar en ambos la misma criatura.
 
@@ -658,67 +492,9 @@ GENERATED      artefacto generado
 EXPERIMENTAL   trabajo todavía no completamente validado
 ```
 
-No veo ninguna necesidad de fingir uniformidad.
+Parafrasendo a Sir Isaac: *Uniformitatem non fingo*.
 
-La diferencia entre las versiones es el proyecto.
-
----
-
-## Lo que no quiero hacer con esto
-
-No quiero convertirlo en una librería.
-
-No quiero convertirlo en un framework.
-
-No quiero convertirlo en una suite de benchmarks.
-
-No quiero encontrar el lenguaje más eficiente para implementar un parser.
-
-No quiero reducir todas las versiones hasta obtener una API perfectamente homogénea.
-
-No quiero que los ports extremos sean juzgados por su utilidad práctica.
-
-Un parser en Brainfuck es absurdo si se lo evalúa como software de producción.
-
-Ese juicio es correcto y, al mismo tiempo, irrelevante.
-
-Su existencia acá responde a otra lógica.
-
----
-
-## Un homenaje
-
-Este repositorio es, antes que nada, un homenaje a *Exercices de style*.
-
-No intento reproducir las noventa y nueve piezas de Queneau ni establecer correspondencias uno a uno entre procedimientos literarios y lenguajes de programación.
-
-Me interesa algo más sencillo.
-
-Tomar una forma.
-
-Mantenerla reconocible.
-
-Someterla a restricciones sucesivas.
-
-Ver qué queda.
-
-Ver qué cambia.
-
-Ver qué aparece únicamente porque una determinada restricción obligó a encontrar una solución que de otro modo no habría existido.
-
-El parser podría haber sido otro objeto.
-
-Pero una vez elegido, deja de importar demasiado si existe una manera mejor de implementarlo.
-
-La pregunta ya no es:
-
-«¿cómo debería escribirse este parser?»
-
-sino:
-
-«¿cómo se ve este parser cuando tiene que ser escrito así?»
-
-Ahí termina la ingeniería como finalidad y empieza el ejercicio de estilo.
+La diferencia entre las versiones *es* el proyecto.
 
 ---
 
@@ -734,7 +510,7 @@ Ahí termina la ingeniería como finalidad y empieza el ejercicio de estilo.
 
 ## Licencia
 
-El código se distribuye bajo licencia MIT, salvo indicación específica en algún port.
+El código se distribuye bajo licencia CC0, salvo indicación específica en algún port.
 
 ---
 
@@ -744,8 +520,3 @@ El código se distribuye bajo licencia MIT, salvo indicación específica en alg
 - Oulipo. Textos y documentos sobre literatura potencial y *contrainte*.
 - Documentación específica de cada lenguaje de programación utilizado.
 
----
-
-## En una línea
-
-Queneau tomó una anécdota y la escribió de noventa y nueve maneras. Yo tomé un parser.
