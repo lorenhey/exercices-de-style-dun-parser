@@ -1,6 +1,6 @@
 # Parser V7 - Port
 
-Cada carpeta contiene el archivo fuente extraido del chat y, cuando aplica, archivos de build o runner.
+Cada carpeta contiene el archivo fuente principal del port y, cuando aplica, archivos de build o runner.
 
 ## Recursos
 
