@@ -2,15 +2,15 @@
 
 const readline = require("readline");
 const path = require("path");
-const { ParserV7 } = require("./parserV7");
+const { ParserV7 } = require("./ParserV7");
 
 const grammarPath = process.argv.includes("--grammar")
   ? process.argv[process.argv.indexOf("--grammar") + 1]
-  : path.join(__dirname, "resources", "grammar.json");
+  : path.join(__dirname, "..", "..", "resources", "grammar.json");
 
 const lexiconPath = process.argv.includes("--lexicon")
   ? process.argv[process.argv.indexOf("--lexicon") + 1]
-  : path.join(__dirname, "resources", "lexicon.json");
+  : path.join(__dirname, "..", "..", "resources", "lexicon.json");
 
 const beam = process.argv.includes("--beam")
   ? Number(process.argv[process.argv.indexOf("--beam") + 1])

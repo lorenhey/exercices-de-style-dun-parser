@@ -152,21 +152,25 @@ class ParserV7 {
   // ---------- Load lexicon ----------
   loadLexicon(l) {
     this.lexByWord = new Map();
-    const entries = l.entries ?? l.lexicon ?? [];
+    const entriesRaw = l.entries ?? l.lexicon ?? [];
+    const entries = Array.isArray(entriesRaw)
+      ? entriesRaw
+      : Object.entries(entriesRaw).flatMap(([word, items]) =>
+          (Array.isArray(items) ? items : []).map(item => ({ word, ...item }))
+        );
     for (const e of entries) {
       const word = String(e.word ?? e.form ?? "").toLowerCase();
       if (!word) continue;
 
       const pos = this.intern(e.pos ?? e.tag ?? "X");
-      let w = (e.weight ?? e.prob ?? 1.0);
-      w = (typeof w === "number" && w > 0) ? w : 1e-12;
+      const w = Number(e.weight ?? e.score ?? e.prob ?? 0);
 
       const { feats, sig } = this.readFeats(e);
 
       const entry = {
         word,
         pos,
-        logw: Math.log(w),
+        logw: Number.isFinite(w) ? w : 0,
         feats, // Map keyId->valId
         sig
       };
@@ -225,10 +229,11 @@ class ParserV7 {
       if (rhsArr.length < 1 || rhsArr.length > 2) continue;
       const rhsIds = rhsArr.map(s => this.intern(s));
 
-      let w = (r.weight ?? r.prob ?? 1.0);
-      w = (typeof w === "number" && w > 0) ? w : 1e-12;
+      const w = Number(r.weight ?? r.score ?? r.prob ?? 0);
 
-      const prop = String(r.propagate ?? "MERGE").trim().toUpperCase() || "MERGE";
+      const op = String(r.op ?? r.propagate ?? "MERGE").trim().toUpperCase() || "MERGE";
+      const prop = op;
+      const args = r.args && typeof r.args === "object" ? r.args : {};
 
       const csRaw = r.constraints ?? r.conds ?? [];
       const cs = [];
@@ -251,8 +256,10 @@ class ParserV7 {
         rhsLen: rhsIds.length,
         rhs1: rhsIds[0],
         rhs2: rhsIds[1] ?? 0,
-        logw: Math.log(w),
+        logw: Number.isFinite(w) ? w : 0,
+        op,
         prop,
+        args,
         cs
       });
     }
@@ -385,17 +392,7 @@ class ParserV7 {
   }
 
   applyUnaryConstraints(rule, childFeats) {
-    const out = new Map(childFeats);
-    for (const c of rule.cs) {
-      const typ = c.type;
-      if (typ === "REQUIRE") {
-        const v = out.get(c.key) ?? 0;
-        if (v !== c.val) return { ok: false, outFeats: out };
-      } else if (typ === "ASSIGN") {
-        if (c.key && c.val) out.set(c.key, c.val);
-      }
-    }
-    return { ok: true, outFeats: this.sortFeatMap(out) };
+    return this.applyRuleOp(rule, childFeats, new Map());
   }
 
   // ---------- Combine (binary) ----------
@@ -420,10 +417,44 @@ class ParserV7 {
   }
 
   applyBinaryConstraints(rule, lf, rf) {
+    return this.applyRuleOp(rule, lf, rf);
+  }
+
+  applyRuleOp(rule, lf, rf) {
     let out;
-    if (rule.prop === "LEFT") out = new Map(lf);
-    else if (rule.prop === "RIGHT") out = new Map(rf);
-    else out = this.mergeFeats(lf, rf);
+    const op = rule.op ?? rule.prop ?? "MERGE";
+
+    if (op === "EMPTY") {
+      out = new Map();
+    } else if (op === "LEFT") {
+      out = new Map(lf);
+    } else if (op === "RIGHT") {
+      out = new Map(rf);
+    } else if (op === "UNIFY" || op === "MERGE") {
+      const unified = this.unifyFeats(lf, rf);
+      if (!unified.ok) return { ok: false, outFeats: new Map() };
+      out = unified.out;
+    } else if (op === "REQUIRE_LEFT" || op === "REQUIRE_RIGHT") {
+      const src = op === "REQUIRE_RIGHT" ? rf : lf;
+      const key = this.intern(rule.args.key ?? "");
+      const val = this.intern(rule.args.value ?? "");
+      if (!key || !val || (src.get(key) ?? 0) !== val) {
+        return { ok: false, outFeats: new Map() };
+      }
+      out = new Map(src);
+    } else if (op === "MAKE_GAP") {
+      out = new Map();
+      out.set(this.intern("idx"), this.intern("?i"));
+      out.set(this.intern("gap"), this.intern(rule.args.type ?? "gap"));
+    } else if (op === "RELCLAUSE_OBL") {
+      const keyObl = this.intern("obl");
+      const valYes = this.intern("yes");
+      if ((rf.get(keyObl) ?? 0) !== valYes) return { ok: false, outFeats: new Map() };
+      out = new Map(lf);
+      out.set(this.intern("gap"), this.intern("obl"));
+    } else {
+      out = this.mergeFeats(lf, rf);
+    }
 
     for (const c of rule.cs) {
       const typ = c.type;
@@ -454,6 +485,15 @@ class ParserV7 {
     }
 
     return { ok: true, outFeats: this.sortFeatMap(out) };
+  }
+
+  unifyFeats(lf, rf) {
+    const out = new Map(lf);
+    for (const [k, v] of rf.entries()) {
+      if (out.has(k) && out.get(k) !== v) return { ok: false, out: new Map() };
+      out.set(k, v);
+    }
+    return { ok: true, out: this.sortFeatMap(out) };
   }
 
   mergeFeats(lf, rf) {
