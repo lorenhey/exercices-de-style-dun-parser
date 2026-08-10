@@ -1,0 +1,27 @@
+>v                                                                  v
+  >~:55p                     "leer char"                            |
+  :32`!#v_                                                       <  |
+  32-:55g+55p                 "to lower"                             |
+  :33`!#v_                                                       <  |
+  :46`!#v_                                                       <  |
+  :63`!#v_                                                       <  |
+  :33`!#v_                                                       <  |
+  :81`!#v_                                                       <  |
+  :65`!#v_                                                       <  |
+  :97`!#v_                                                       <  |
+  :113`!#v_                                                      <  |
+  55g:35p                     "store in buffer row 5"               |
+  >:35g:46`#v_                                                   <  |
+  "q"                          ,>                                  |
+  >:35g:46`#v_                                                   <  |
+  "v"                          ,>                                  |
+  >:35g:46`#v_                                                   <  |
+  "."                          ,>                                  |
+  ^                                                                <
+  >35g#v_                                                         < 
+  >55g#v_                                                         < 
+  @                                                                ^
+#  fila 5 = buffer de palabra (columna 0..19)
+#  cell (55,x) almacena ASCII del carácter actual
+#  reconoce secuencia "que" o sufijos verbales y emite 'q','v','.'
+#  EOF (byte 0) finaliza

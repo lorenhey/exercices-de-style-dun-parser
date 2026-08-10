@@ -1,0 +1,460 @@
+; ============================
+; Parser V7 — Logo (UCBLogo)
+; CKY incremental + beam + unary closure + backpointers
+;
+; Gramática y lexicón se cargan como "deck" (listas Logo).
+; ============================
+
+; -------- Config --------
+make "MAXN 64
+make "BEAM 8
+make "NEG -1e30
+make "MAXJ :MAXN + 1
+
+; -------- Interning de símbolos --------
+make "SYMS []          ; lista de strings (1-index = id)
+make "RULES []         ; cada regla: [lhs rhs1 rhs2 len logw]
+make "LEX []           ; cada entrada: [word posid]
+
+; -------- Estado incremental --------
+make "N 0
+make "TOKSURF []       ; tokens (strings) 1..N
+make "TOKCAT []        ; cat id por token 1..N
+make "TOKSC  []        ; score por token 1..N (usamos 0)
+
+; -------- Chart (arrays lineales) --------
+; idx = (((i-1)*MAXJ + (j-1))*BEAM + (s-1)) + 1
+; i: 1..MAXN, j: 2..MAXN+1, s: 1..BEAM
+make "SIZE (:MAXN * :MAXJ * :BEAM)
+
+make "CAT  array :SIZE
+make "SC   array :SIZE
+make "KIND array :SIZE
+make "A    array :SIZE
+make "B    array :SIZE
+
+to IDX :i :j :s
+  output 1 + (( (:i - 1) * :MAXJ + (:j - 1) ) * :BEAM + (:s - 1))
+end
+
+to AGET :arr :k
+  output aref :arr :k
+end
+
+to ASET :arr :k :v
+  aset :arr :k :v
+end
+
+to CLEARALL
+  make "N 0
+  make "TOKSURF []
+  make "TOKCAT []
+  make "TOKSC  []
+  ; llenar arrays
+  localmake "k 1
+  repeat :SIZE [
+    ASET :CAT  :k 0
+    ASET :SC   :k :NEG
+    ASET :KIND :k 0
+    ASET :A    :k 0
+    ASET :B    :k 0
+    make "k :k + 1
+  ]
+end
+
+to CLEARCELL :i :j
+  localmake "s 1
+  repeat :BEAM [
+    localmake "k IDX :i :j :s
+    ASET :CAT  :k 0
+    ASET :SC   :k :NEG
+    ASET :KIND :k 0
+    ASET :A    :k 0
+    ASET :B    :k 0
+    make "s :s + 1
+  ]
+end
+
+; -------- Helpers listas --------
+to POSINLIST :x :lst
+  ; devuelve índice 1..N o 0 si no está
+  localmake "i 1
+  repeat count :lst [
+    if (item :i :lst) = :x [output :i]
+    make "i :i + 1
+  ]
+  output 0
+end
+
+to INTERN :sym
+  localmake "u lowercase :sym
+  localmake "p POSINLIST :u :SYMS
+  if :p > 0 [output :p]
+  make "SYMS lput :u :SYMS
+  output count :SYMS
+end
+
+to SYMNAME :id
+  if :id < 1 [output "<?>]
+  if :id > count :SYMS [output "<?>]
+  output item :id :SYMS
+end
+
+; -------- Carga (deck) --------
+; RAWGRAMMAR: lista de reglas [lhs rhs1 rhs2 logw]
+;   rhs2 puede ser "" o [] para unaria
+; RAWLEXICON: lista de entradas [word pos]
+to LOADGRAMMAR :raw
+  make "RULES []
+  localmake "i 1
+  repeat count :raw [
+    localmake "r item :i :raw
+    localmake "lhs INTERN first :r
+    localmake "rhs1 INTERN item 2 :r
+    localmake "rhs2txt item 3 :r
+    localmake "len 2
+    localmake "rhs2 0
+    if (islist :rhs2txt) or (:rhs2txt = "") [
+      make "len 1
+      make "rhs2 0
+    ] [
+      make "rhs2 INTERN :rhs2txt
+      make "len 2
+    ]
+    localmake "logw item 4 :r
+    make "RULES lput (list :lhs :rhs1 :rhs2 :len :logw) :RULES
+    make "i :i + 1
+  ]
+end
+
+to LOADLEXICON :raw
+  make "LEX []
+  localmake "i 1
+  repeat count :raw [
+    localmake "e item :i :raw
+    localmake "w lowercase first :e
+    localmake "p INTERN item 2 :e
+    make "LEX lput (list :w :p) :LEX
+    make "i :i + 1
+  ]
+end
+
+to LEXLOOKUP :w
+  ; devuelve posid o 0 si OOV
+  localmake "ww lowercase :w
+  localmake "i 1
+  repeat count :LEX [
+    localmake "e item :i :LEX
+    if first :e = :ww [output item 2 :e]
+    make "i :i + 1
+  ]
+  output 0
+end
+
+; -------- Pack ptr: ((i*1000)+j)*10 + s --------
+to PACK :i :j :s
+  output ((:i * 1000) + :j) * 10 + :s
+end
+
+to PI :ptr
+  output int (:ptr / 10000)
+end
+
+to PJ :ptr
+  localmake "i PI :ptr
+  output int ( (:ptr / 10) - (:i * 1000) )
+end
+
+to PS :ptr
+  output :ptr - (int (:ptr / 10) * 10)
+end
+
+; -------- INSERT con dedupe + beam --------
+to INSERT :i :j :newCat :newSc :newKind :a :b
+  ; devuelve 1 si cambió, 0 si no
+  ; 1) si ya existe cat: reemplaza si score mejor
+  localmake "s 1
+  repeat :BEAM [
+    localmake "k IDX :i :j :s
+    if AGET :CAT :k = :newCat [
+      if :newSc > AGET :SC :k [
+        ASET :SC :k :newSc
+        ASET :KIND :k :newKind
+        ASET :A :k :a
+        ASET :B :k :b
+        output 1
+      ]
+      output 0
+    ]
+    make "s :s + 1
+  ]
+
+  ; 2) slot vacío
+  make "s 1
+  repeat :BEAM [
+    localmake "k IDX :i :j :s
+    if AGET :CAT :k = 0 [
+      ASET :CAT :k :newCat
+      ASET :SC :k :newSc
+      ASET :KIND :k :newKind
+      ASET :A :k :a
+      ASET :B :k :b
+      output 1
+    ]
+    make "s :s + 1
+  ]
+
+  ; 3) reemplazar peor si mejora
+  localmake "worstS 1
+  localmake "worstSc :NEG
+  ; inicializar con slot 1
+  localmake "k1 IDX :i :j 1
+  make "worstSc AGET :SC :k1
+
+  make "s 2
+  repeat (:BEAM - 1) [
+    localmake "k IDX :i :j :s
+    if AGET :SC :k < :worstSc [
+      make "worstSc AGET :SC :k
+      make "worstS :s
+    ]
+    make "s :s + 1
+  ]
+
+  if :newSc > :worstSc [
+    localmake "kw IDX :i :j :worstS
+    ASET :CAT :kw :newCat
+    ASET :SC :kw :newSc
+    ASET :KIND :kw :newKind
+    ASET :A :kw :a
+    ASET :B :kw :b
+    output 1
+  ]
+  output 0
+end
+
+; -------- Unary closure (iter limitado) --------
+to UNARYCLOSE :i :j
+  localmake "iter 1
+  repeat 16 [
+    localmake "changed 0
+
+    localmake "s 1
+    repeat :BEAM [
+      localmake "k IDX :i :j :s
+      localmake "childCat AGET :CAT :k
+      if :childCat <> 0 [
+        localmake "childSc AGET :SC :k
+        localmake "childPtr PACK :i :j :s
+
+        ; scan reglas unarias
+        localmake "r 1
+        repeat count :RULES [
+          localmake "rr item :r :RULES
+          if item 4 :rr = 1 [
+            if item 2 :rr = :childCat [
+              localmake "newCat item 1 :rr
+              localmake "newSc :childSc + item 5 :rr
+              if INSERT :i :j :newCat :newSc 1 :childPtr 0 = 1 [make "changed 1]
+            ]
+          ]
+          make "r :r + 1
+        ]
+      ]
+      make "s :s + 1
+    ]
+
+    if :changed = 0 [stop]
+    make "iter :iter + 1
+  ]
+end
+
+; -------- Combine binario --------
+to COMBINE :i :k :j
+  localmake "sl 1
+  repeat :BEAM [
+    localmake "kl IDX :i :k :sl
+    localmake "catL AGET :CAT :kl
+    if :catL <> 0 [
+      localmake "scL AGET :SC :kl
+      localmake "ptrL PACK :i :k :sl
+
+      localmake "sr 1
+      repeat :BEAM [
+        localmake "kr IDX :k :j :sr
+        localmake "catR AGET :CAT :kr
+        if :catR <> 0 [
+          localmake "scR AGET :SC :kr
+          localmake "ptrR PACK :k :j :sr
+
+          ; scan reglas binarias
+          localmake "r 1
+          repeat count :RULES [
+            localmake "rr item :r :RULES
+            if item 4 :rr = 2 [
+              if (item 2 :rr = :catL) and (item 3 :rr = :catR) [
+                localmake "newCat item 1 :rr
+                localmake "newSc :scL + :scR + item 5 :rr
+                INSERT :i :j :newCat :newSc 2 :ptrL :ptrR
+              ]
+            ]
+            make "r :r + 1
+          ]
+        ]
+        make "sr :sr + 1
+      ]
+    ]
+    make "sl :sl + 1
+  ]
+end
+
+; -------- Tokenización (simple) + morfología (al/del) --------
+to TOKENIZE :sentence
+  ; usa PARSE (UCBLogo) y filtra puntuación básica
+  localmake "t parse :sentence
+  localmake "out []
+  localmake "i 1
+  repeat count :t [
+    localmake "w item :i :t
+    if not memberp :w [". "," ";" ":" "?" "!" "(" ")" "[" "]" "\"" "'"] [
+      make "out lput :w :out
+    ]
+    make "i :i + 1
+  ]
+  output :out
+end
+
+to SPLITMORPH :toks
+  localmake "out []
+  localmake "i 1
+  repeat count :toks [
+    localmake "w lowercase item :i :toks
+    if :w = "al  [make "out sentence :out [a el]  make "i :i + 1  stop]
+    if :w = "del [make "out sentence :out [de el] make "i :i + 1  stop]
+    make "out lput :w :out
+    make "i :i + 1
+  ]
+  output :out
+end
+
+; -------- STEP incremental (token surface) --------
+to STEP :tok
+  ; asigna categoría lexical
+  localmake "pos LEXLOOKUP :tok
+  if :pos = 0 [make "pos INTERN "NOUN]  ; fallback OOV
+
+  make "N :N + 1
+  localmake "t :N
+  make "TOKSURF lput :tok :TOKSURF
+  make "TOKCAT  lput :pos :TOKCAT
+  make "TOKSC   lput 0 :TOKSC
+
+  localmake "j :t + 1
+
+  ; celda lexical (t, t+1)
+  CLEARCELL :t :j
+  INSERT :t :j :pos 0 0 :t 0
+  UNARYCLOSE :t :j
+
+  ; spans que terminan en j
+  localmake "i :t - 1
+  while [:i >= 1] [
+    CLEARCELL :i :j
+    localmake "k :i + 1
+    while [:k <= (:j - 1)] [
+      COMBINE :i :k :j
+      make "k :k + 1
+    ]
+    UNARYCLOSE :i :j
+    make "i :i - 1
+  ]
+end
+
+; -------- Mejor raíz --------
+to BESTROOTPTR
+  if :N = 0 [output 0]
+  localmake "j :N + 1
+  localmake "bestSc :NEG
+  localmake "bestS 0
+
+  localmake "s 1
+  repeat :BEAM [
+    localmake "k IDX 1 :j :s
+    if AGET :CAT :k = (INTERN "S) [  ; ojo: STARTSYM => acá asumimos "S" como start
+      if AGET :SC :k > :bestSc [
+        make "bestSc AGET :SC :k
+        make "bestS :s
+      ]
+    ]
+    make "s :s + 1
+  ]
+
+  if :bestS = 0 [output 0]
+  output PACK 1 :j :bestS
+end
+
+; -------- Render bracketed --------
+to RENDER :ptr
+  if :ptr = 0 [output ""]
+
+  localmake "i PI :ptr
+  localmake "j PJ :ptr
+  localmake "s PS :ptr
+  localmake "k IDX :i :j :s
+
+  localmake "c AGET :CAT :k
+  localmake "knd AGET :KIND :k
+  localmake "a AGET :A :k
+  localmake "b AGET :B :k
+
+  localmake "lab SYMNAME :c
+
+  if :knd = 0 [
+    output word "(" (word :lab (word " " (word item :a :TOKSURF ")")))
+  ]
+  if :knd = 1 [
+    output word "(" (word :lab (word " " (word RENDER :a ")")))
+  ]
+  ; binary
+  output word "(" (word :lab (word " " (word RENDER :a (word " " (word RENDER :b ")")))))
+end
+
+; -------- Parse full sentence --------
+to PARSE :sentence
+  CLEARALL
+  localmake "toks SPLITMORPH TOKENIZE :sentence
+  localmake "i 1
+  repeat count :toks [
+    STEP item :i :toks
+    make "i :i + 1
+  ]
+  localmake "p BESTROOTPTR
+  if :p = 0 [output ""]
+  output RENDER :p
+end
+
+; ============================
+; Ejemplo de deck (toy)
+; ============================
+
+; Gramática: S -> NP VP ; NP -> DET N ; VP -> V (unaria)
+make "RAWGRAMMAR [
+  [S  NP  VP  0]
+  [NP DET N   0]
+  [VP V  ""   0]
+]
+
+make "RAWLEXICON [
+  [el      DET]
+  [filósofo N]
+  [filosofo N]
+  [murió   V]
+  [murio   V]
+]
+
+; bootstrap
+LOADGRAMMAR :RAWGRAMMAR
+LOADLEXICON :RAWLEXICON
+
+; Uso:
+;   print PARSE "El filósofo murió .
